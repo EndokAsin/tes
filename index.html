@@ -53,21 +53,6 @@
         </div>
     </div>
 
-    <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div class="bg-slate-50 px-6 py-4 border-b flex justify-between items-center">
-                <h3 class="font-bold text-lg text-slate-800">Login Admin</h3>
-                <button onclick="Core.toggleModal('login-modal')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
-            </div>
-            <form id="login-form" class="p-6 space-y-4">
-                <div><label class="block text-sm font-medium text-slate-700 mb-2">Email</label><input type="email" id="login-email" class="w-full px-4 py-3 border rounded-xl" placeholder="admin@sankara.org"></div>
-                <div><label class="block text-sm font-medium text-slate-700 mb-2">Password</label><input type="password" id="login-password" class="w-full px-4 py-3 border rounded-xl" placeholder="admin123"></div>
-                <button type="submit" id="btn-submit-login" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition">Masuk</button>
-            </form>
-        </div>
-    </div>
-
     <!-- Generic Modal -->
     <div id="modal-generic" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
@@ -76,23 +61,6 @@
                 <button onclick="Core.toggleModal('modal-generic')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
             </div>
             <div id="modal-generic-content" class="p-6 overflow-y-auto"></div>
-        </div>
-    </div>
-
-    <!-- Setup DB Modal -->
-    <div id="modal-setup-db" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-[80] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
-                <h3 class="font-bold text-lg text-blue-800"><i class="fas fa-database mr-2"></i>Setup Database & Restore Data</h3>
-                <button onclick="Core.toggleModal('modal-setup-db')" class="text-blue-400 hover:text-blue-600"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="p-6 overflow-y-auto flex-1">
-                <p class="text-sm text-slate-600 mb-4">Salin kode SQL di bawah ini dan jalankan di <a href="https://supabase.com/dashboard/project/ljhcszzmuaourbwwozmf/sql" target="_blank" class="text-blue-600 hover:underline font-bold">SQL Editor Supabase</a>. Ini akan membuat tabel khusus PM (terpisah dari Finance) dan memulihkan data Anda.</p>
-                <p class="text-xs text-red-500 font-bold mb-2">PENTING: Pastikan Anda menyalin kode dari Canvas SQL yang disediakan sebelumnya!</p>
-                <div class="bg-slate-100 p-4 rounded text-center">
-                    <span class="text-slate-500 italic">Silakan buka file `setup.sql` di editor sebelah untuk menyalin kode SQL lengkap.</span>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -121,34 +89,17 @@
             </div>
             <h1 class="text-xl font-bold text-slate-800">SANKARA <span class="text-green-600">PM</span></h1>
         </div>
-        <div class="p-4 border-b border-slate-100 flex items-center space-x-3">
-            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600"><i class="fas fa-user"></i></div>
-            <div class="flex-1 min-w-0"><p class="text-sm font-medium truncate" id="sidebar-username">Guest</p><p class="text-xs text-slate-500" id="sidebar-role">Mode Tamu</p></div>
-        </div>
         <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1">
             <button id="nav-dashboard" onclick="App.router('dashboard')" class="w-full text-left px-4 py-3 rounded-xl sidebar-item hover:bg-green-50 text-slate-600 flex items-center"><i class="fas fa-chart-pie w-6"></i> Dashboard</button>
             <button id="nav-projects" onclick="App.router('projects')" class="w-full text-left px-4 py-3 rounded-xl sidebar-item hover:bg-green-50 text-slate-600 flex items-center"><i class="fas fa-layer-group w-6"></i> Proyek</button>
-            
             <button id="nav-references" onclick="App.router('references')" class="w-full text-left px-4 py-3 rounded-xl sidebar-item hover:bg-orange-50 text-slate-600 flex items-center"><i class="fas fa-shopping-bag w-6"></i> Referensi Alat</button>
-            
-            <div id="admin-menu-section" class="hidden mt-6">
-                <div class="px-4 py-2 text-xs font-semibold text-slate-400 uppercase">Admin</div>
-                <button id="nav-approvals" onclick="App.router('approvals')" class="w-full text-left px-4 py-3 rounded-xl sidebar-item hover:bg-blue-50 text-slate-600 flex items-center"><i class="fas fa-check-circle w-6"></i> Approvals</button>
-            </div>
         </nav>
-        <div class="p-4 border-t border-slate-100">
-            <button id="btn-login-sidebar" onclick="Core.toggleModal('login-modal')" class="w-full px-4 py-2 bg-green-600 text-white rounded-xl shadow hover:bg-green-700 transition font-bold">Login</button>
-            <button id="btn-logout-sidebar" onclick="Auth.logout()" class="w-full px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition hidden">Logout</button>
-            
-            <button onclick="Core.toggleModal('modal-setup-db')" class="mt-4 w-full text-xs text-slate-400 hover:text-slate-600 flex items-center justify-center"><i class="fas fa-database mr-1"></i> Cek Database</button>
-        </div>
     </aside>
 
     <main class="flex-1 flex flex-col h-screen overflow-hidden">
         <header class="bg-white border-b p-4 flex justify-between items-center shadow-sm z-20">
             <div class="font-bold text-green-700 text-lg md:hidden"><i class="fas fa-hand-holding-heart mr-2"></i>SANKARA PM</div>
-            <div class="hidden md:block font-bold text-slate-800">Workspace</div>
-            <button onclick="Core.toggleModal('login-modal')" id="header-login-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold md:hidden shadow">Login</button>
+            <div class="hidden md:block font-bold text-slate-800">Project Management Workspace</div>
         </header>
         <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth custom-scrollbar relative"></div>
     </main>
@@ -156,10 +107,9 @@
     <script>
         // --- MODULE 1: CORE & CONFIG ---
         const Core = {
-            supabase: null,
-            // Menggunakan Database yang sama dengan NGO Finance
+            // Inisialisasi Supabase langsung di properti
+            supabase: window.supabase.createClient('https://ljhcszzmuaourbwwozmf.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqaGNzenptdWFvdXJid3dvem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNjY4OTcsImV4cCI6MjA3OTg0Mjg5N30.SnitqGcGWVqBrGD5OOB5RasA6u1rDCqpuKir0gLG_b8'),
             SUPABASE_URL: 'https://ljhcszzmuaourbwwozmf.supabase.co', 
-            SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqaGNzenptdWFvdXJid3dvem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNjY4OTcsImV4cCI6MjA3OTg0Mjg5N30.SnitqGcGWVqBrGD5OOB5RasA6u1rDCqpuKir0gLG_b8',
             
             SOP_STEPS: [
                 { id: 1, name: "Submit Proposal", desc: "H-18", requiresApproval: false }, 
@@ -169,10 +119,6 @@
                 { id: 5, name: "Kegiatan", desc: "H-0", requiresApproval: false },
                 { id: 6, name: "Laporan", desc: "H+2", requiresApproval: true }
             ],
-            
-            initSupabase: () => {
-                Core.supabase = window.supabase.createClient(Core.SUPABASE_URL, Core.SUPABASE_KEY);
-            },
 
             formatDate: (s) => s ? new Date(s).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'}) : '-',
             formatCurrency: (n) => n ? new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(n) : 'Rp 0',
@@ -186,7 +132,6 @@
 
             toggleModal: (id) => document.getElementById(id).classList.toggle('hidden'),
 
-            // Custom Confirm to replace window.confirm
             confirm: (msg) => {
                 return new Promise((resolve) => {
                     document.getElementById('modal-confirm-msg').textContent = msg;
@@ -195,6 +140,7 @@
                     const yesBtn = document.getElementById('btn-confirm-yes');
                     const noBtn = document.getElementById('btn-confirm-cancel');
                     
+                    // Clone to remove previous event listeners
                     const newYes = yesBtn.cloneNode(true);
                     const newNo = noBtn.cloneNode(true);
                     yesBtn.parentNode.replaceChild(newYes, yesBtn);
@@ -218,11 +164,9 @@
                 Core.toggleModal('modal-generic');
             },
 
-            // UPDATED: Fetch from pm_regions to separate from Finance regions
             fetchRegions: async () => {
                 const { data, error } = await Core.supabase.from('pm_regions').select('*').order('name');
                 if (error) {
-                    // Fallback if table doesn't exist yet
                     return [];
                 }
                 return data;
@@ -230,79 +174,10 @@
 
             checkDB: async () => {
                 const { error } = await Core.supabase.from('projects').select('id').limit(1);
-                if(error) {
-                    Core.toggleModal('modal-setup-db');
-                }
             }
         };
 
-        // --- MODULE 2: AUTHENTICATION ---
-        const Auth = {
-            currentUser: null,
-            init: () => {
-                const saved = localStorage.getItem('sankara_admin');
-                if (saved) { Auth.currentUser = JSON.parse(saved); Auth.updateUI(true); }
-                document.getElementById('login-form').addEventListener('submit', Auth.handleLogin);
-            },
-            handleLogin: async (e) => {
-                e.preventDefault();
-                const email = document.getElementById('login-email').value;
-                const password = document.getElementById('login-password').value;
-                const btn = document.getElementById('btn-submit-login');
-                
-                btn.disabled = true;
-                btn.innerText = "Memuat...";
-
-                try {
-                    const { data, error } = await Core.supabase
-                        .from('users')
-                        .select('*')
-                        .eq('email', email)
-                        .eq('password', password)
-                        .maybeSingle();
-
-                    if (error) throw error;
-
-                    if (data) {
-                        Auth.currentUser = { 
-                            id: data.id,
-                            name: data.name, 
-                            role: data.role, 
-                            regional: data.regional 
-                        };
-                        localStorage.setItem('sankara_admin', JSON.stringify(Auth.currentUser));
-                        Auth.updateUI(true); 
-                        Core.toggleModal('login-modal'); 
-                        Core.showToast(`Login berhasil! Selamat datang, ${data.name}`);
-                        App.router('dashboard');
-                    } else {
-                        Core.showToast('Email atau Password salah!');
-                    }
-                } catch (err) {
-                    console.error("Login Error:", err);
-                    Core.showToast('Terjadi kesalahan saat login');
-                } finally {
-                    btn.disabled = false;
-                    btn.innerText = "Masuk";
-                }
-            },
-            logout: () => { localStorage.removeItem('sankara_admin'); Auth.currentUser = null; Auth.updateUI(false); App.router('projects'); },
-            isAdmin: () => Auth.currentUser?.role === 'admin',
-            updateUI: (isLoggedIn) => {
-                const user = Auth.currentUser;
-                document.getElementById('sidebar-username').textContent = isLoggedIn ? user.name : 'Guest User';
-                document.getElementById('sidebar-role').textContent = isLoggedIn ? (user.role === 'admin' ? 'Administrator' : 'User') : 'Mode Tamu';
-                
-                const toggle = (id, show) => {
-                    const el = document.getElementById(id);
-                    if(el) el.classList.toggle('hidden', !show);
-                };
-                toggle('btn-login-sidebar', !isLoggedIn); toggle('btn-logout-sidebar', isLoggedIn);
-                toggle('admin-menu-section', isLoggedIn && user.role === 'admin'); toggle('header-login-btn', !isLoggedIn);
-            }
-        };
-
-        // --- MODULE 3: USER VIEWS ---
+        // --- MODULE 2: USER VIEWS ---
         const UserModule = {
             projects: [],
             activeProjectId: null,
@@ -569,29 +444,27 @@
                 } catch (e) {
                     console.error("Error opening project detail:", e);
                     Core.showToast("Gagal memuat detail proyek: " + e.message);
-                    const container = document.getElementById('content-area');
-                    container.innerHTML = `<div class="p-8 text-center text-red-500">Error: ${e.message}</div>`;
                 }
             },
 
             renderDetailView: (container, p, r, sid) => {
                 const getStatus = (stepId) => r.approvals?.find(a => a.step_number === stepId)?.status || 'pending';
                 const status = getStatus(sid);
-                const isAdmin = Auth.isAdmin();
                 const step = Core.SOP_STEPS.find(s => s.id === sid);
-                
-                if (!step) {
-                    console.error("Step not found for sid:", sid);
-                    container.innerHTML = `<div class="p-8 text-center text-red-500">Error: Step ID ${sid} tidak valid</div>`;
-                    return;
-                }
                 
                 let controls = '';
                 if(step.requiresApproval) {
-                    if(status === 'pending') controls = `<button onclick="UserModule.submitApproval('${p.id}', ${sid})" class="bg-blue-600 text-white w-full py-2 rounded font-bold hover:bg-blue-700 transition">Ajukan Approval</button>`;
-                    else if(status === 'submitted') controls = isAdmin ? `<div class="flex flex-col gap-2"><div class="text-xs text-slate-500 italic mb-1 text-center">*Pastikan budget sudah disetujui di Aplikasi Finance</div><div class="flex gap-2"><button onclick="AdminModule.decide('${p.id}',${sid},'approved')" class="bg-green-600 text-white flex-1 py-2 rounded hover:bg-green-700 transition">Verifikasi: Approved</button><button onclick="AdminModule.decide('${p.id}',${sid},'rejected')" class="bg-red-600 text-white flex-1 py-2 rounded hover:bg-red-700 transition">Reject</button></div></div>` : `<div class="bg-yellow-50 text-yellow-800 p-3 rounded text-center border border-yellow-200">Menunggu Verifikasi Finance</div>`;
-                    else if(status === 'approved') controls = `<div class="bg-green-50 text-green-800 p-3 rounded text-center font-bold mb-2 border border-green-200">Disetujui</div>${sid<6?`<button onclick="UserModule.openProjectDetail('${p.id}',${sid+1})" class="bg-slate-100 w-full py-2 rounded hover:bg-slate-200 transition">Lanjut Step ${sid+1}</button>`:''}`;
-                    else controls = `<div class="bg-red-50 text-red-800 p-3 rounded text-center mb-2 border border-red-200">Ditolak</div><button onclick="UserModule.submitApproval('${p.id}',${sid})" class="bg-slate-600 text-white w-full py-2 rounded hover:bg-slate-700 transition">Ajukan Ulang</button>`;
+                    if(status === 'pending') controls = `<button onclick="UserModule.submitApproval('${p.id}', ${sid})" class="bg-blue-600 text-white w-full py-2 rounded font-bold hover:bg-blue-700 transition">Ajukan ke Finance</button>`;
+                    else if(status === 'submitted') {
+                        controls = `<div class="bg-yellow-50 text-yellow-800 p-4 rounded text-center border border-yellow-200">
+                            <i class="fas fa-clock mb-2 text-2xl"></i>
+                            <p class="font-bold">Menunggu Verifikasi Finance</p>
+                            <p class="text-sm">Silakan buka aplikasi <b>NGO Finance</b> untuk menyetujui pengajuan ini.</p>
+                            <button onclick="UserModule.openProjectDetail('${p.id}', ${sid})" class="mt-2 text-xs bg-white border px-3 py-1 rounded hover:bg-gray-50"><i class="fas fa-sync"></i> Cek Status</button>
+                        </div>`;
+                    }
+                    else if(status === 'approved') controls = `<div class="bg-green-50 text-green-800 p-3 rounded text-center font-bold mb-2 border border-green-200">Disetujui oleh Finance</div>${sid<6?`<button onclick="UserModule.openProjectDetail('${p.id}',${sid+1})" class="bg-slate-100 w-full py-2 rounded hover:bg-slate-200 transition">Lanjut Step ${sid+1}</button>`:''}`;
+                    else controls = `<div class="bg-red-50 text-red-800 p-3 rounded text-center mb-2">Ditolak Finance: ${r.approvals.find(a=>a.step_number===sid)?.notes || '-'}</div><button onclick="UserModule.submitApproval('${p.id}',${sid})" class="bg-slate-600 text-white w-full py-2 rounded hover:bg-slate-700 transition">Ajukan Ulang</button>`;
                 } else {
                     controls = `<button onclick="UserModule.openProjectDetail('${p.id}',${sid+1})" class="bg-teal-600 text-white w-full py-2 rounded font-bold hover:bg-teal-700 transition">Selesai, Lanjut</button>`;
                 }
@@ -618,8 +491,6 @@
 
                 const pJson = JSON.stringify({id: p.id, title: p.title, event_date: p.event_date, location: p.location, regional: p.regional, leader: p.leader}).replace(/"/g, '&quot;');
 
-                let contentHtml = '';
-                
                 if(sid === 1) {
                     const gameRows = (r.games||[]).map(g => {
                         const gJson = JSON.stringify(g).replace(/"/g, '&quot;');
@@ -788,7 +659,7 @@
                 } else { Core.showToast('Gagal Upload: '+error.message); }
             },
 
-            submitApproval: async (id, step) => { await Core.supabase.from('project_approvals').upsert({project_id: id, step_number: step, status: 'submitted'}); Core.showToast('Diajukan'); UserModule.openProjectDetail(id, step); },
+            submitApproval: async (id, step) => { await Core.supabase.from('project_approvals').upsert({project_id: id, step_number: step, status: 'submitted'}); Core.showToast('Diajukan ke Finance'); UserModule.openProjectDetail(id, step); },
             
             addItemModal: (table, pid) => {
                 let html = '';
@@ -1113,15 +984,6 @@
             }
         };
 
-        // --- MODULE 4: ADMIN ---
-        const AdminModule = {
-            renderApprovals: async (c) => {
-                const { data } = await Core.supabase.from('project_approvals').select('*, projects(title,regional)').eq('status','submitted');
-                c.innerHTML = `<h2 class="text-2xl font-bold mb-4">Approvals</h2><div class="space-y-4">${data?.length?data.map(a=>`<div class="bg-white p-4 rounded border shadow flex justify-between items-center"><div><h3 class="font-bold">${a.projects?.title}</h3><span class="bg-yellow-100 text-xs px-2 py-1 rounded">Step ${a.step_number}</span></div><div class="flex gap-2"><button onclick="AdminModule.decide('${a.project_id}',${a.step_number},'approved')" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition">V</button><button onclick="AdminModule.decide('${a.project_id}',${a.step_number},'rejected')" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition">X</button></div></div>`).join(''):'<p class="text-slate-500">Tidak ada pengajuan approval pending.</p>'}</div>`;
-            },
-            decide: async (pid, step, status) => { await Core.supabase.from('project_approvals').update({status}).match({project_id:pid, step_number:step}); Core.showToast('Updated'); App.router('approvals'); }
-        };
-
         // --- MODULE 5: PDF ENGINE ---
         const PDFService = {
             generate: async (pid) => {
@@ -1224,7 +1086,6 @@
         const App = {
             init: () => { 
                 Core.initSupabase(); 
-                Auth.init(); 
                 Core.checkDB(); // Auto-check if tables exist
                 App.router('projects'); 
             },
@@ -1237,11 +1098,9 @@
                 if(r === 'dashboard') document.getElementById('nav-dashboard').classList.add('bg-green-50', 'text-green-700');
                 if(r === 'projects') document.getElementById('nav-projects').classList.add('bg-green-50', 'text-green-700');
                 if(r === 'references') document.getElementById('nav-references').classList.add('bg-orange-50', 'text-orange-700');
-                if(r === 'approvals') document.getElementById('nav-approvals').classList.add('bg-blue-50', 'text-blue-700');
 
                 if(r==='dashboard'){ UserModule.loadData().then(()=>UserModule.renderDashboard(c)); }
                 if(r==='projects'){ UserModule.loadData().then(()=>UserModule.renderProjectList(c)); }
-                if(r==='approvals'){ AdminModule.renderApprovals(c); }
                 if(r==='references'){ UserModule.renderReferences(c); }
             }
         };
