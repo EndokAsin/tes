@@ -107,8 +107,10 @@
     <script>
         // --- MODULE 1: CORE & CONFIG ---
         const Core = {
+            // Inisialisasi Supabase langsung di properti
             supabase: window.supabase.createClient('https://ljhcszzmuaourbwwozmf.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqaGNzenptdWFvdXJid3dvem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNjY4OTcsImV4cCI6MjA3OTg0Mjg5N30.SnitqGcGWVqBrGD5OOB5RasA6u1rDCqpuKir0gLG_b8'),
-            SUPABASE_URL: 'https://ljhcszzmuaourbwwozmf.supabase.co',
+            SUPABASE_URL: 'https://ljhcszzmuaourbwwozmf.supabase.co', 
+            
             SOP_STEPS: [
                 { id: 1, name: "Submit Proposal", desc: "H-18", requiresApproval: false }, 
                 { id: 2, name: "Media & Finance", desc: "H-15", requiresApproval: true },
@@ -117,114 +119,437 @@
                 { id: 5, name: "Kegiatan", desc: "H-0", requiresApproval: false },
                 { id: 6, name: "Laporan", desc: "H+2", requiresApproval: true }
             ],
+
             formatDate: (s) => s ? new Date(s).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'}) : '-',
             formatCurrency: (n) => n ? new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(n) : 'Rp 0',
+            
             showToast: (msg) => {
-                const t = document.getElementById('toast'); document.getElementById('toast-msg').textContent = msg;
-                t.classList.remove('translate-x-full'); setTimeout(() => t.classList.add('translate-x-full'), 3000);
+                const t = document.getElementById('toast');
+                document.getElementById('toast-msg').textContent = msg;
+                t.classList.remove('translate-x-full');
+                setTimeout(() => t.classList.add('translate-x-full'), 3000);
             },
+
             toggleModal: (id) => document.getElementById(id).classList.toggle('hidden'),
-            confirm: (msg) => new Promise((resolve) => {
-                document.getElementById('modal-confirm-msg').textContent = msg;
-                document.getElementById('modal-confirm').classList.remove('hidden');
-                document.getElementById('btn-confirm-yes').onclick = () => { document.getElementById('modal-confirm').classList.add('hidden'); resolve(true); };
-                document.getElementById('btn-confirm-cancel').onclick = () => { document.getElementById('modal-confirm').classList.add('hidden'); resolve(false); };
-            }),
+
+            confirm: (msg) => {
+                return new Promise((resolve) => {
+                    document.getElementById('modal-confirm-msg').textContent = msg;
+                    document.getElementById('modal-confirm').classList.remove('hidden');
+                    
+                    const yesBtn = document.getElementById('btn-confirm-yes');
+                    const noBtn = document.getElementById('btn-confirm-cancel');
+                    
+                    // Clone to remove previous event listeners
+                    const newYes = yesBtn.cloneNode(true);
+                    const newNo = noBtn.cloneNode(true);
+                    yesBtn.parentNode.replaceChild(newYes, yesBtn);
+                    noBtn.parentNode.replaceChild(newNo, noBtn);
+                    
+                    newYes.onclick = () => {
+                        document.getElementById('modal-confirm').classList.add('hidden');
+                        resolve(true);
+                    };
+                    newNo.onclick = () => {
+                        document.getElementById('modal-confirm').classList.add('hidden');
+                        resolve(false);
+                    };
+                });
+            },
+
             openGenericModal: (title, html, onSubmitFn) => {
                 document.getElementById('modal-generic-title').innerText = title;
                 document.getElementById('modal-generic-content').innerHTML = html;
                 if(onSubmitFn) document.querySelector('#modal-generic-content form').onsubmit = onSubmitFn;
                 Core.toggleModal('modal-generic');
             },
+
             fetchRegions: async () => {
                 const { data, error } = await Core.supabase.from('pm_regions').select('*').order('name');
-                return error ? [] : data;
+                if (error) {
+                    return [];
+                }
+                return data;
             },
-            checkDB: async () => { await Core.supabase.from('projects').select('id').limit(1); }
+
+            checkDB: async () => {
+                const { error } = await Core.supabase.from('projects').select('id').limit(1);
+            }
         };
 
+        // --- MODULE 2: USER VIEWS ---
         const UserModule = {
-            projects: [], activeProjectId: null, filterRegion: 'all', dashboardFilterRegion: 'all', references: [], 
+            projects: [],
+            activeProjectId: null,
+            filterRegion: 'all',
+            dashboardFilterRegion: 'all', 
+            references: [], 
 
             loadData: async () => {
                 const { data } = await Core.supabase.from('projects').select('*').order('event_date');
                 UserModule.projects = data || [];
             },
+
             loadReferences: async () => {
                 const { data } = await Core.supabase.from('event_tools_references').select('*').order('product_name');
                 UserModule.references = data || [];
             },
+
             renderReferences: async (container) => {
                 await UserModule.loadReferences();
-                container.innerHTML = `<div class="fade-in"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Referensi Alat & Bahan</h2><button onclick="UserModule.addReferenceModal()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition">+ Tambah Referensi</button></div>${UserModule.references.length === 0 ? `<div class="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500"><i class="fas fa-shopping-bag text-4xl mb-3 text-slate-300"></i><p>Belum ada data.</p></div>` : `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">${UserModule.references.map(i=>`<div class="bg-white p-4 rounded border shadow-sm"><h3 class="font-bold">${i.product_name}</h3><a href="${i.purchase_link}" target="_blank" class="text-blue-500 text-sm truncate block">Link Pembelian</a></div>`).join('')}</div>`}</div>`;
+                
+                container.innerHTML = `
+                    <div class="fade-in">
+                        <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+                            <div>
+                                <h2 class="text-2xl font-bold">Referensi Alat & Bahan</h2>
+                                <p class="text-sm text-slate-500">Daftar rekomendasi barang untuk kebutuhan acara</p>
+                            </div>
+                            <button onclick="UserModule.addReferenceModal()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md shadow-orange-200 transition flex items-center">
+                                <i class="fas fa-plus mr-2"></i> Tambah Referensi
+                            </button>
+                        </div>
+                        
+                        ${UserModule.references.length === 0 ? `
+                            <div class="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+                                <i class="fas fa-shopping-bag text-4xl mb-3 text-slate-300"></i>
+                                <p>Belum ada data referensi alat.</p>
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                ${UserModule.references.map(item => {
+                                    const rJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                                    return `
+                                    <div class="bg-white p-4 rounded-xl border shadow-sm hover:shadow-md transition relative group">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1 pr-2">
+                                                <h3 class="font-bold text-slate-800 mb-1">${item.product_name}</h3>
+                                                <a href="${item.purchase_link}" target="_blank" class="text-xs text-blue-500 hover:underline truncate block mb-3 flex items-center">
+                                                    <i class="fas fa-external-link-alt mr-1"></i> Link Pembelian
+                                                </a>
+                                            </div>
+                                            <div class="flex gap-1">
+                                                <button onclick="UserModule.editReferenceModal(${rJson})" class="text-slate-400 hover:text-blue-500 p-1 rounded transition"><i class="fas fa-edit"></i></button>
+                                                <button onclick="UserModule.deleteReference('${item.id}')" class="text-slate-400 hover:text-red-500 p-1 rounded transition"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+                `;
             },
+
             addReferenceModal: () => {
-                Core.openGenericModal('Tambah Referensi', `<form onsubmit="event.preventDefault(); UserModule.saveReference(this)"><label class="block text-xs font-bold text-slate-500 mb-1">NAMA ALAT</label><input name="product_name" class="w-full border p-2 rounded mb-2" placeholder="Nama Alat" required><label class="block text-xs font-bold text-slate-500 mb-1">LINK</label><input name="purchase_link" class="w-full border p-2 rounded mb-4" placeholder="Link" required><button class="w-full bg-orange-500 text-white py-2 rounded">Simpan</button></form>`);
+                const html = `
+                    <form onsubmit="event.preventDefault(); UserModule.saveReference(this)">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">NAMA PRODUK / ALAT</label>
+                        <input name="product_name" class="w-full border p-2 rounded mb-3" placeholder="Contoh: Tali Rafia Besar" required>
+                        
+                        <label class="block text-xs font-bold text-slate-500 mb-1">LINK PEMBELIAN (E-COMMERCE)</label>
+                        <input name="purchase_link" class="w-full border p-2 rounded mb-4" placeholder="https://shopee.co.id/..." required>
+                        
+                        <button class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded font-bold transition">Simpan Referensi</button>
+                    </form>
+                `;
+                Core.openGenericModal('Tambah Referensi Alat', html);
             },
+
+            editReferenceModal: (item) => {
+                const html = `
+                    <form onsubmit="event.preventDefault(); UserModule.saveReference(this)">
+                        <input type="hidden" name="id" value="${item.id}">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">NAMA PRODUK / ALAT</label>
+                        <input name="product_name" value="${item.product_name}" class="w-full border p-2 rounded mb-3" required>
+                        
+                        <label class="block text-xs font-bold text-slate-500 mb-1">LINK PEMBELIAN (E-COMMERCE)</label>
+                        <input name="purchase_link" value="${item.purchase_link}" class="w-full border p-2 rounded mb-4" required>
+                        
+                        <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition">Update Referensi</button>
+                    </form>
+                `;
+                Core.openGenericModal('Edit Referensi Alat', html);
+            },
+
             saveReference: async (form) => {
-                const d = Object.fromEntries(new FormData(form)); delete d.id;
-                await Core.supabase.from('event_tools_references').insert(d);
-                Core.showToast('Disimpan'); Core.toggleModal('modal-generic'); UserModule.renderReferences(document.getElementById('content-area'));
+                const d = Object.fromEntries(new FormData(form));
+                let error;
+                
+                if (d.id) {
+                    const { error: err } = await Core.supabase.from('event_tools_references').update(d).eq('id', d.id);
+                    error = err;
+                } else {
+                    delete d.id;
+                    const { error: err } = await Core.supabase.from('event_tools_references').insert(d);
+                    error = err;
+                }
+
+                if (error) {
+                    Core.showToast('Gagal simpan: ' + error.message);
+                } else {
+                    Core.showToast('Referensi berhasil disimpan');
+                    Core.toggleModal('modal-generic');
+                    UserModule.renderReferences(document.getElementById('content-area'));
+                }
             },
+
+            deleteReference: async (id) => {
+                if(!await Core.confirm('Hapus referensi ini?')) return;
+                const { error } = await Core.supabase.from('event_tools_references').delete().eq('id', id);
+                if (error) {
+                    Core.showToast('Gagal hapus: ' + error.message);
+                } else {
+                    Core.showToast('Referensi dihapus');
+                    UserModule.renderReferences(document.getElementById('content-area'));
+                }
+            },
+            
+            renderGanttChart: (list) => {
+                if(!list.length) return '';
+                const today = new Date();
+                const header = Array.from({length:26},(_,i)=>{ const d=i-20; return `<div class="w-8 shrink-0 text-center text-xs ${[-18,-15,-3,0,2].includes(d)?'bg-slate-200 font-bold':''}">${d===0?'H':(d>0?'+'+d:d)}</div>` }).join('');
+                
+                return `<div class="min-w-[800px] relative">
+                    <div class="flex border-b pb-2 mb-2"><div class="w-40 shrink-0">Project</div><div class="flex">${header}</div></div>
+                    ${list.map(p=>{
+                        if(!p.event_date) return '';
+                        const eventDate = new Date(p.event_date);
+                        const diffTime = today - eventDate;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        const cells = Array.from({length:26},(_,i)=>{ const d=i-20; 
+                            let c='', color = 'bg-slate-200'; 
+                            if (d < diffDays) color = 'bg-green-500'; 
+                            else if (d === diffDays) color = 'bg-blue-500 animate-pulse'; 
+                            
+                            if (d >= diffDays) {
+                                if(c==='P') color='bg-slate-400';
+                                if(c==='M') color='bg-purple-400';
+                                if(c==='F') color='bg-yellow-400';
+                                if(c==='E') color='bg-blue-500';
+                                if(c==='L') color='bg-green-500';
+                            }
+                            const isToday = d === diffDays;
+                            return `<div class="w-8 shrink-0 border-r h-8 flex flex-col items-center justify-center relative group gantt-cell">
+                                ${isToday ? '<div class="today-line"></div>' : ''}
+                                <div class="w-full h-full ${color}"></div>
+                            </div>`;
+                        }).join('');
+                        return `<div class="flex items-center mb-2 border-b pb-2 hover:bg-slate-50 transition"><div class="w-40 shrink-0 pr-2"><div class="truncate text-sm font-bold" title="${p.title}">${p.title}</div><div class="text-[10px] text-slate-400 pl-4">${Core.formatDate(p.event_date)}</div></div><div class="flex">${cells}</div></div>`;
+                    }).join('')}
+                </div>`;
+            },
+
             renderDashboard: async (container) => {
                 const regions = await Core.fetchRegions();
-                const filtered = UserModule.dashboardFilterRegion === 'all' ? UserModule.projects : UserModule.projects.filter(p => p.regional === UserModule.dashboardFilterRegion);
-                container.innerHTML = `<div class="fade-in"><h2 class="text-2xl font-bold mb-6">Dashboard</h2><div class="flex gap-2 mb-4"><select onchange="UserModule.dashboardFilterRegion=this.value; UserModule.renderDashboard(document.getElementById('content-area'))" class="border rounded px-3 py-2"><option value="all">Semua Regional</option>${regions.map(r=>`<option value="${r.name}" ${UserModule.dashboardFilterRegion===r.name?'selected':''}>${r.name}</option>`).join('')}</select></div><div class="grid grid-cols-3 gap-4 mb-6"><div class="bg-white p-6 rounded border shadow-sm text-center"><span class="text-3xl font-bold">${filtered.length}</span><br>Total Proyek</div></div><div class="bg-white p-6 rounded border shadow-sm overflow-x-auto">${UserModule.renderGanttChart(filtered)}</div></div>`;
+                const filteredProjects = UserModule.dashboardFilterRegion === 'all' 
+                    ? UserModule.projects 
+                    : UserModule.projects.filter(p => p.regional === UserModule.dashboardFilterRegion);
+
+                const total = filteredProjects.length;
+                const done = filteredProjects.filter(p => p.status?.includes('Selesai')).length;
+                
+                container.innerHTML = `
+                    <div class="fade-in">
+                        <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+                            <h2 class="text-2xl font-bold">Dashboard</h2>
+                            <div class="flex gap-2 items-center">
+                                <label class="text-sm font-medium text-slate-600">Filter:</label>
+                                <select onchange="UserModule.dashboardFilterRegion=this.value; UserModule.renderDashboard(document.getElementById('content-area'))" class="border rounded-lg px-3 py-2 text-sm bg-white">
+                                    <option value="all">Semua Regional</option>
+                                    ${regions.map(r => `<option value="${r.name}" ${UserModule.dashboardFilterRegion===r.name?'selected':''}>${r.name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="bg-white p-6 rounded-xl border shadow-sm flex flex-col items-center"><span class="text-3xl font-bold">${total}</span><span class="text-sm text-slate-500">Total Proyek</span></div>
+                            <div class="bg-white p-6 rounded-xl border shadow-sm flex flex-col items-center text-green-600"><span class="text-3xl font-bold">${done}</span><span class="text-sm">Selesai</span></div>
+                            <div class="bg-white p-6 rounded-xl border shadow-sm flex flex-col items-center text-blue-600"><span class="text-3xl font-bold">${total-done}</span><span class="text-sm">Proses</span></div>
+                        </div>
+                        <div class="bg-white rounded-xl border p-6"><h3 class="font-bold mb-4">Timeline Global (Real Date)</h3><div class="overflow-x-auto">${UserModule.renderGanttChart(filteredProjects)}</div></div>
+                    </div>`;
             },
+
             renderProjectList: async (container) => {
                 const regions = await Core.fetchRegions();
                 const filtered = UserModule.filterRegion === 'all' ? UserModule.projects : UserModule.projects.filter(p => p.regional === UserModule.filterRegion);
-                container.innerHTML = `<div class="fade-in"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Daftar Proyek</h2><div class="flex gap-2"><select onchange="UserModule.filterRegion=this.value;App.router('projects')" class="border rounded px-3 py-2"><option value="all">Semua Regional</option>${regions.map(r=>`<option value="${r.name}" ${UserModule.filterRegion===r.name?'selected':''}>${r.name}</option>`).join('')}</select><button onclick="UserModule.openNewProjectModal()" class="bg-green-600 text-white px-4 py-2 rounded">+ Buat Proyek</button></div></div><div class="grid gap-4">${filtered.map(p=>`<div onclick="UserModule.openProjectDetail('${p.id}')" class="bg-white p-5 rounded-xl border shadow-sm hover:shadow-md cursor-pointer"><div class="flex justify-between mb-2"><span class="bg-slate-800 text-white text-xs px-2 py-1 rounded">${p.regional}</span><span class="text-xs text-slate-500">${Core.formatDate(p.event_date)}</span></div><h3 class="font-bold text-lg">${p.title}</h3><p class="text-sm text-slate-500">${p.status}</p></div>`).join('')}</div></div>`;
+                container.innerHTML = `
+                    <div class="fade-in">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold">Daftar Proyek</h2>
+                            <div class="flex gap-2">
+                                <select onchange="UserModule.filterRegion=this.value; App.router('projects')" class="border rounded-lg px-3 py-2 text-sm">
+                                    <option value="all">Semua Regional</option>
+                                    ${regions.map(r => `<option value="${r.name}" ${UserModule.filterRegion===r.name?'selected':''}>${r.name}</option>`).join('')}
+                                </select>
+                                <button onclick="UserModule.openNewProjectModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-green-700 transition">+ Buat Proyek</button>
+                            </div>
+                        </div>
+                        <div class="grid gap-4">
+                            ${filtered.map(p => {
+                                const pJson = JSON.stringify({
+                                    id: p.id, 
+                                    title: p.title, 
+                                    event_date: p.event_date, 
+                                    location: p.location, 
+                                    regional: p.regional, 
+                                    leader: p.leader
+                                }).replace(/"/g, '&quot;');
+
+                                return `
+                                <div onclick="UserModule.openProjectDetail('${p.id}')" class="bg-white p-5 rounded-xl border shadow-sm hover:shadow-md cursor-pointer transition relative group flex flex-col h-full">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <span class="bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-sm">${p.regional}</span>
+                                        <span class="text-xs text-slate-500">${Core.formatDate(p.event_date)}</span>
+                                    </div>
+                                    <h3 class="font-bold text-lg mb-1">${p.title}</h3>
+                                    <div class="text-sm text-slate-500 mb-4">${p.status}</div>
+                                    <div class="mt-auto pt-2 flex justify-between items-center">
+                                        <div class="text-xs text-slate-400"><i class="fas fa-user mr-1"></i> ${p.leader || '-'}</div>
+                                        <div class="flex gap-2">
+                                            <button onclick="event.stopPropagation(); UserModule.openEditProjectModal(${pJson})" class="bg-white text-blue-400 hover:text-blue-600 p-2 rounded-full shadow-sm hover:shadow transition border border-slate-100" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                                            <button onclick="event.stopPropagation(); UserModule.deleteProject('${p.id}')" class="bg-white text-slate-300 hover:text-red-600 p-2 rounded-full shadow-sm hover:shadow transition border border-slate-100" title="Hapus"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                    </div>`;
             },
+
             openNewProjectModal: async () => {
                 const regions = await Core.fetchRegions();
-                Core.openGenericModal('Proyek Baru', `<form onsubmit="event.preventDefault();UserModule.createProject(this)"><input name="title" placeholder="Nama" class="w-full border p-2 rounded mb-2" required><select name="regional" class="w-full border p-2 rounded mb-2" required><option value="">Pilih Regional</option>${regions.map(r=>`<option>${r.name}</option>`).join('')}</select><input type="date" name="event_date" class="w-full border p-2 rounded mb-4" required><button class="w-full bg-green-600 text-white py-2 rounded">Simpan</button></form>`);
+                const options = regions.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
+                const html = `
+                    <form onsubmit="event.preventDefault(); UserModule.createProject(this)">
+                        <input name="title" placeholder="Nama Kegiatan" class="w-full border p-2 rounded mb-2" required>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <select name="regional" class="border p-2 rounded" required><option value="">Pilih Regional</option>${options}</select>
+                            <input name="leader" placeholder="Leader" class="w-full border p-2 rounded">
+                        </div>
+                        <input type="date" name="event_date" class="w-full border p-2 rounded mb-2" required>
+                        <input name="location" placeholder="Lokasi" class="w-full border p-2 rounded mb-4">
+                        <button class="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700 transition">Simpan</button>
+                    </form>`;
+                Core.openGenericModal('Proyek Baru', html);
             },
+
+            // UPDATED: Sync to NGO Finance 'events' table
             createProject: async (form) => {
-                const d = Object.fromEntries(new FormData(form)); d.status = 'Tahap 1: Submit Proposal';
+                const d = Object.fromEntries(new FormData(form));
+                d.status = 'Tahap 1: Submit Proposal';
                 const { data, error } = await Core.supabase.from('projects').insert(d).select();
-                if(data) {
-                    await Core.supabase.from('events').upsert({region: d.regional, name: d.title, budget_limit: 0, status: 'active'}, {onConflict: 'region,name'});
-                    Core.toggleModal('modal-generic'); Core.showToast('Proyek Dibuat'); App.router('projects');
+                
+                if(!error && data) {
+                    // Sync to NGO Finance Events table (0 budget initially)
+                    const p = data[0];
+                    await Core.supabase.from('events').upsert({
+                        region: p.regional,
+                        name: p.title,
+                        budget_limit: 0,
+                        status: 'active'
+                    }, { onConflict: 'region,name' });
+                    
+                    Core.toggleModal('modal-generic'); Core.showToast('Proyek Dibuat & Sinkronisasi Finance OK'); App.router('projects');
+                } else {
+                    Core.showToast('Gagal buat proyek: ' + error.message);
                 }
             },
+
             openProjectDetail: async (id, stepId = 1) => {
-                UserModule.activeProjectId = id;
-                const container = document.getElementById('content-area'); container.innerHTML = '<div class="flex h-full items-center justify-center"><div class="loading-spinner"></div></div>';
-                const { data: p } = await Core.supabase.from('projects').select('*').eq('id', id).single();
-                if(!p) return App.router('projects');
-                const [rundowns, budgets, volunteers, approvals, games] = await Promise.all([
-                    Core.supabase.from('rundowns').select('*').eq('project_id', id).order('time_start'),
-                    Core.supabase.from('budgets').select('*').eq('project_id', id).order('id'),
-                    Core.supabase.from('volunteers').select('*').eq('project_id', id),
-                    Core.supabase.from('project_approvals').select('*').eq('project_id', id),
-                    Core.supabase.from('project_games').select('*').eq('project_id', id)
-                ]);
-                UserModule.renderDetailView(container, p, { rundowns: rundowns.data, budgets: budgets.data, volunteers: volunteers.data, approvals: approvals.data, games: games.data }, stepId);
+                try {
+                    UserModule.activeProjectId = id;
+                    const container = document.getElementById('content-area');
+                    container.innerHTML = '<div class="flex h-full items-center justify-center"><div class="loading-spinner"></div></div>';
+                    
+                    const { data: p } = await Core.supabase.from('projects').select('*').eq('id', id).single();
+                    if(!p) return App.router('projects');
+
+                    const [rundowns, budgets, volunteers, approvals, games] = await Promise.all([
+                        Core.supabase.from('rundowns').select('*').eq('project_id', id).order('time_start', { ascending: true }),
+                        Core.supabase.from('budgets').select('*').eq('project_id', id).order('id'),
+                        Core.supabase.from('volunteers').select('*').eq('project_id', id),
+                        Core.supabase.from('project_approvals').select('*').eq('project_id', id),
+                        Core.supabase.from('project_games').select('*').eq('project_id', id)
+                    ]);
+
+                    UserModule.renderDetailView(container, p, { rundowns: rundowns.data, budgets: budgets.data, volunteers: volunteers.data, approvals: approvals.data, games: games.data }, stepId);
+                } catch (e) {
+                    console.error("Error opening project detail:", e);
+                    Core.showToast("Gagal memuat detail proyek: " + e.message);
+                }
             },
+
             renderDetailView: (container, p, r, sid) => {
-                const status = r.approvals?.find(a => a.step_number === sid)?.status || 'pending';
+                const getStatus = (stepId) => r.approvals?.find(a => a.step_number === stepId)?.status || 'pending';
+                const status = getStatus(sid);
                 const step = Core.SOP_STEPS.find(s => s.id === sid);
+                
                 let controls = '';
                 if(step.requiresApproval) {
-                    if(status === 'pending') controls = `<button onclick="UserModule.submitApproval('${p.id}', ${sid})" class="bg-blue-600 text-white w-full py-2 rounded font-bold">Ajukan ke Finance</button>`;
+                    if(status === 'pending') controls = `<button onclick="UserModule.submitApproval('${p.id}', ${sid})" class="bg-blue-600 text-white w-full py-2 rounded font-bold hover:bg-blue-700 transition">Ajukan ke Finance</button>`;
                     else if(status === 'submitted') {
-                        controls = `<div class="bg-yellow-50 text-yellow-800 p-4 rounded text-center border border-yellow-200"><i class="fas fa-clock mb-2 text-2xl"></i><p class="font-bold">Menunggu Verifikasi Finance</p><p class="text-sm">Silakan hubungi Admin Finance (NGO Finance App) untuk persetujuan RAB.</p><button onclick="UserModule.openProjectDetail('${p.id}', ${sid})" class="mt-2 text-xs bg-white border px-3 py-1 rounded hover:bg-gray-50"><i class="fas fa-sync"></i> Cek Status</button></div>`;
+                        controls = `<div class="bg-yellow-50 text-yellow-800 p-4 rounded text-center border border-yellow-200">
+                            <i class="fas fa-clock mb-2 text-2xl"></i>
+                            <p class="font-bold">Menunggu Verifikasi Finance</p>
+                            <p class="text-sm">Silakan hubungi Admin Finance (NGO Finance App) untuk persetujuan RAB.</p>
+                            <button onclick="UserModule.openProjectDetail('${p.id}', ${sid})" class="mt-2 text-xs bg-white border px-3 py-1 rounded hover:bg-gray-50"><i class="fas fa-sync"></i> Cek Status</button>
+                        </div>`;
                     }
-                    else if(status === 'approved') controls = `<div class="bg-green-50 text-green-800 p-3 rounded text-center font-bold mb-2 border border-green-200">Disetujui oleh Finance</div>${sid<6?`<button onclick="UserModule.openProjectDetail('${p.id}',${sid+1})" class="bg-slate-100 w-full py-2 rounded">Lanjut Step ${sid+1}</button>`:''}`;
-                    else controls = `<div class="bg-red-50 text-red-800 p-3 rounded text-center mb-2">Ditolak Finance: ${r.approvals.find(a=>a.step_number===sid)?.notes || '-'}</div><button onclick="UserModule.submitApproval('${p.id}',${sid})" class="bg-slate-600 text-white w-full py-2 rounded">Ajukan Ulang</button>`;
+                    else if(status === 'approved') controls = `<div class="bg-green-50 text-green-800 p-3 rounded text-center font-bold mb-2 border border-green-200">Disetujui oleh Finance</div>${sid<6?`<button onclick="UserModule.openProjectDetail('${p.id}',${sid+1})" class="bg-slate-100 w-full py-2 rounded hover:bg-slate-200 transition">Lanjut Step ${sid+1}</button>`:''}`;
+                    else controls = `<div class="bg-red-50 text-red-800 p-3 rounded text-center mb-2 border border-red-200">Ditolak Finance: ${r.approvals.find(a=>a.step_number===sid)?.notes || '-'}</div><button onclick="UserModule.submitApproval('${p.id}',${sid})" class="bg-slate-600 text-white w-full py-2 rounded hover:bg-slate-700 transition">Ajukan Ulang</button>`;
                 } else {
-                    controls = `<button onclick="UserModule.openProjectDetail('${p.id}',${sid+1})" class="bg-teal-600 text-white w-full py-2 rounded font-bold">Selesai, Lanjut</button>`;
+                    controls = `<button onclick="UserModule.openProjectDetail('${p.id}',${sid+1})" class="bg-teal-600 text-white w-full py-2 rounded font-bold hover:bg-teal-700 transition">Selesai, Lanjut</button>`;
                 }
-                const stepsHtml = Core.SOP_STEPS.map(s => {
-                    const st = r.approvals?.find(a => a.step_number === s.id)?.status || 'pending';
-                    return `<button onclick="UserModule.openProjectDetail('${p.id}',${s.id})" class="flex flex-col items-center min-w-[100px] p-2 rounded-xl mx-1 ${sid===s.id?'bg-green-600 text-white':'bg-white text-slate-600 border'}"><div class="text-xs font-bold">Tahap ${s.id}</div><div class="text-[10px]">${s.name}</div><i class="fas ${st==='approved'?'fa-check text-green-500':'fa-circle text-slate-300'} text-xs absolute -top-1 -right-1 bg-white rounded-full p-1 border"></i></button>`;
-                }).join('');
+
+                let body = `<div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded mb-6 flex items-start shadow-sm">
+                    <div class="mr-3 mt-1"><i class="fas fa-clock"></i></div>
+                    <div><p class="font-bold text-sm uppercase tracking-wide">Batas Waktu (Deadline)</p><p class="text-sm font-medium">${step.desc} (Dari Hari H)</p></div>
+                </div>`;
                 
-                let body = `<div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded mb-6"><p class="font-bold text-sm">Deadline: ${step.desc} (Dari Hari H)</p></div>`;
-                if (sid === 1) {
-                    const gameRows = (r.games||[]).map(g => { const gJson = JSON.stringify(g).replace(/"/g, '&quot;'); return `<div class="flex justify-between items-center border-b pb-1"><div class="flex-1"><div class="font-medium">${g.title}</div><div class="text-xs text-blue-500 truncate"><a href="${g.link}" target="_blank">${g.link||'-'}</a></div></div><div class="flex gap-1 ml-2"><button onclick="UserModule.editGame('${p.id}', ${gJson})" class="text-blue-500 hover:bg-blue-50 p-1 rounded"><i class="fas fa-edit"></i></button><button onclick="UserModule.deleteItem('project_games', '${g.id}', '${p.id}')" class="text-red-500 hover:bg-red-50 p-1 rounded"><i class="fas fa-trash"></i></button></div></div>`; }).join('');
-                    body += `<label class="text-xs font-bold text-slate-500">TARGET AUDIENCE</label><input value="${p.target_audience||''}" onchange="UserModule.updateField('${p.id}','target_audience',this.value)" class="w-full border p-2 rounded mb-2"><label class="text-xs font-bold text-slate-500">KONSEP ACARA</label><textarea onchange="UserModule.updateField('${p.id}','concept_note',this.value)" class="w-full border p-2 rounded mb-4" rows="4">${p.concept_note||''}</textarea><div class="flex justify-between items-center mb-2"><h4 class="font-bold text-slate-700">Games & Referensi</h4><button onclick="UserModule.addItemModal('project_games','${p.id}')" class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded hover:bg-purple-200 transition">+ Tambah</button></div><div class="bg-slate-50 p-3 rounded border mb-4 text-sm space-y-2">${gameRows.length ? gameRows : '<div class="text-slate-400 italic">Belum ada games/referensi</div>'}</div>`;
+                const stepsHtml = Core.SOP_STEPS.map(s => {
+                    const st = getStatus(s.id);
+                    let locked = false;
+                    if (s.id === 3 && getStatus(2) !== 'approved') locked = true;
+                    if ((s.id === 4 || s.id === 5 || s.id === 6) && getStatus(3) !== 'approved') {
+                        locked = true;
+                    }
+                    
+                    const active = sid === s.id ? 'bg-green-600 text-white' : 'bg-white text-slate-600 border';
+                    const icon = st === 'approved' ? 'fa-check text-green-500' : 'fa-circle text-slate-300';
+                    return `<button onclick="${locked?'':`UserModule.openProjectDetail('${p.id}',${s.id})`}" class="flex flex-col items-center min-w-[100px] p-2 rounded-xl transition mx-1 ${active} ${locked?'opacity-50 cursor-not-allowed': 'hover:shadow-md'}">
+                        <div class="text-xs font-bold">Tahap ${s.id}</div><div class="text-[10px]">${s.name}</div><i class="fas ${icon} text-xs absolute -top-1 -right-1 bg-white rounded-full p-1 border"></i>
+                    </button>`;
+                }).join('');
+
+                const pJson = JSON.stringify({id: p.id, title: p.title, event_date: p.event_date, location: p.location, regional: p.regional, leader: p.leader}).replace(/"/g, '&quot;');
+
+                if(sid === 1) {
+                    const gameRows = (r.games||[]).map(g => {
+                        const gJson = JSON.stringify(g).replace(/"/g, '&quot;');
+                        return `<div class="flex justify-between items-center border-b pb-1">
+                            <div class="flex-1">
+                                <div class="font-medium">${g.title}</div>
+                                <div class="text-xs text-blue-500 truncate"><a href="${g.link}" target="_blank">${g.link||'-'}</a></div>
+                            </div>
+                            <div class="flex gap-1 ml-2">
+                                <button onclick="UserModule.editGame('${p.id}', ${gJson})" class="text-blue-500 hover:bg-blue-50 p-1 rounded"><i class="fas fa-edit"></i></button>
+                                <button onclick="UserModule.deleteItem('project_games', '${g.id}', '${p.id}')" class="text-red-500 hover:bg-red-50 p-1 rounded"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>`;
+                    }).join('');
+
+                    body += `
+                        <label class="text-xs font-bold text-slate-500">TARGET AUDIENCE</label><input value="${p.target_audience||''}" onchange="UserModule.updateField('${p.id}','target_audience',this.value)" class="w-full border p-2 rounded mb-2">
+                        <label class="text-xs font-bold text-slate-500">KONSEP ACARA</label><textarea onchange="UserModule.updateField('${p.id}','concept_note',this.value)" class="w-full border p-2 rounded mb-4" rows="4">${p.concept_note||''}</textarea>
+                        <div class="flex justify-between items-center mb-2"><h4 class="font-bold text-slate-700">Games & Referensi</h4><button onclick="UserModule.addItemModal('project_games','${p.id}')" class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded hover:bg-purple-200 transition">+ Tambah</button></div>
+                        <div class="bg-slate-50 p-3 rounded border mb-4 text-sm space-y-2">
+                            ${gameRows.length ? gameRows : '<div class="text-slate-400 italic">Belum ada games/referensi</div>'}
+                        </div>
+                    `;
                 } else if (sid === 2) {
                     const total = (r.budgets||[]).reduce((a,b)=>a+(b.total_price||0),0);
                     // Modified RAB Rows with Invoice Upload Button
@@ -252,102 +577,553 @@
                     }).join('');
                     
                     const rundownRows = (r.rundowns||[]).map(rd => { const rJson = JSON.stringify(rd).replace(/"/g, '&quot;'); return `<div class="flex gap-2 border-b pb-1 justify-between items-center"><div class="flex-1 flex gap-2"><span class="font-mono bg-white border px-1 rounded text-xs flex items-center">${rd.time_start}-${rd.time_end}</span><span class="text-sm">${rd.activity}</span></div><div class="flex gap-1"><button onclick="UserModule.editRundown('${p.id}', ${rJson})" class="text-blue-500 hover:bg-blue-50 p-1 rounded"><i class="fas fa-edit"></i></button><button onclick="UserModule.deleteItem('rundowns', '${rd.id}', '${p.id}')" class="text-red-400 hover:bg-red-50 p-1 rounded"><i class="fas fa-trash"></i></button></div></div>`; }).join('');
-                    body += `<div class="flex justify-between mb-2"><h4 class="font-bold">RAB (Sinkron ke Finance)</h4><button onclick="UserModule.addItemModal('budgets','${p.id}')" class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 transition">+ Item</button></div><div class="bg-slate-50 p-3 rounded border mb-4 text-sm space-y-2">${rabRows}<div class="flex justify-between font-bold pt-2 border-t mt-2 text-blue-700"><span>Total</span><span>${Core.formatCurrency(total)}</span></div></div><div class="flex justify-between mb-2"><h4 class="font-bold">Rundown</h4><button onclick="UserModule.openRundownModal('${p.id}')" class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded hover:bg-purple-200 transition">+ Kegiatan</button></div><div class="bg-slate-50 p-3 rounded border mb-4 text-sm space-y-1">${rundownRows.length ? rundownRows : '<div class="text-slate-400 italic">Belum ada rundown</div>'}</div><label class="text-xs font-bold text-slate-500">LINK POSTER</label><input value="${p.poster_link||''}" onchange="UserModule.updateField('${p.id}','poster_link',this.value)" class="w-full border p-2 rounded">`;
+                    
+                    body += `
+                        <div class="flex justify-between mb-2"><h4 class="font-bold">RAB (Sinkron ke Finance)</h4><button onclick="UserModule.addItemModal('budgets','${p.id}')" class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 transition">+ Item</button></div>
+                        <div class="bg-slate-50 p-3 rounded border mb-4 text-sm space-y-2">
+                            ${rabRows.length ? rabRows : '<div class="text-slate-400 italic">Belum ada item anggaran</div>'}
+                            <div class="flex justify-between font-bold pt-2 border-t mt-2 text-blue-700"><span>Total</span><span>${Core.formatCurrency(total)}</span></div>
+                        </div>
+                        
+                        <div class="flex justify-between mb-2"><h4 class="font-bold">Rundown</h4><button onclick="UserModule.openRundownModal('${p.id}')" class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded hover:bg-purple-200 transition">+ Kegiatan</button></div>
+                        <div class="bg-slate-50 p-3 rounded border mb-4 text-sm space-y-1">${rundownRows.length ? rundownRows : '<div class="text-slate-400 italic">Belum ada rundown</div>'}</div>
+                        <label class="text-xs font-bold text-slate-500">LINK POSTER</label><input value="${p.poster_link||''}" onchange="UserModule.updateField('${p.id}','poster_link',this.value)" class="w-full border p-2 rounded">
+                    `;
                 } else if (sid === 3) {
                      const volRows = (r.volunteers||[]).map(v => { const vJson = JSON.stringify(v).replace(/"/g, '&quot;'); return `<div class="bg-slate-50 p-2 rounded border text-sm flex justify-between items-center"><span>${v.role_name}</span><div class="flex gap-2 font-bold items-center"><span>${v.count}</span><div class="flex gap-1 border-l pl-2 ml-2 border-slate-300"><button onclick="UserModule.editVolunteer('${p.id}', ${vJson})" class="text-blue-500 font-normal hover:text-blue-700"><i class="fas fa-edit"></i></button><button onclick="UserModule.deleteItem('volunteers', '${v.id}', '${p.id}')" class="text-red-400 font-normal hover:text-red-600"><i class="fas fa-trash"></i></button></div></div></div>`; }).join('');
-                     body += `<div class="flex justify-between mb-2"><h4 class="font-bold">Relawan</h4><button onclick="UserModule.addItemModal('volunteers','${p.id}')" class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded hover:bg-orange-200 transition">+ Divisi</button></div><div class="grid grid-cols-2 gap-2 mb-4">${volRows}</div><label class="text-xs font-bold text-slate-500">STATUS LOGISTIK</label><select onchange="UserModule.updateField('${p.id}','purchase_status',this.value)" class="w-full border p-2 rounded"><option ${p.purchase_status==='Belum'?'selected':''}>Belum</option><option ${p.purchase_status==='Proses'?'selected':''}>Proses</option><option ${p.purchase_status==='Selesai'?'selected':''}>Selesai</option></select>${status === 'approved' ? `<button onclick="PDFService.generate('${p.id}')" class="w-full mt-4 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition"><i class="fas fa-file-pdf mr-2"></i> Download PDF (Progress Tahap 3)</button>` : ''}`;
+                     
+                     // Check if finance (Step 2) is approved
+                     const isFinanceApproved = getStatus(2) === 'approved';
+                     
+                     body += `
+                        <div class="flex justify-between mb-2"><h4 class="font-bold">Relawan</h4><button onclick="UserModule.addItemModal('volunteers','${p.id}')" class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded hover:bg-orange-200 transition">+ Divisi</button></div>
+                        <div class="grid grid-cols-2 gap-2 mb-4">${volRows}</div>
+                        <label class="text-xs font-bold text-slate-500">STATUS LOGISTIK</label>
+                        <select onchange="UserModule.updateField('${p.id}','purchase_status',this.value)" class="w-full border p-2 rounded">
+                            <option ${p.purchase_status==='Belum'?'selected':''}>Belum</option>
+                            <option ${p.purchase_status==='Proses'?'selected':''}>Proses</option>
+                            <option ${p.purchase_status==='Selesai'?'selected':''}>Selesai</option>
+                        </select>
+                        ${isFinanceApproved ? `<button onclick="PDFService.generate('${p.id}')" class="w-full mt-4 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition shadow"><i class="fas fa-file-pdf mr-2"></i> Download PDF (Rundown & RAB)</button>` : '<div class="text-xs text-orange-500 italic mt-2 text-center bg-orange-50 p-2 rounded">Tombol download PDF akan muncul setelah Finance disetujui.</div>'}
+                    `;
                 } else if (sid === 4) {
-                    body += `<label class="text-xs font-bold text-slate-500">CATATAN FIRST MEET</label><textarea onchange="UserModule.updateField('${p.id}','firstmeet_notes',this.value)" class="w-full border p-2 rounded mb-4" rows="4">${p.firstmeet_notes||''}</textarea><div class="bg-slate-50 p-4 rounded-xl border border-dashed border-slate-300"><h4 class="font-bold text-slate-700 text-sm mb-2"><i class="fas fa-cloud-upload-alt mr-2"></i>Bukti First Meet (Foto/Absensi)</h4><div class="space-y-3"><input type="file" onchange="UserModule.uploadFile('${p.id}','evidence',this.files[0],'firstmeet_proof')" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" /><input value="${p.firstmeet_proof||''}" onchange="UserModule.updateField('${p.id}','firstmeet_proof',this.value)" class="w-full border p-2 rounded text-sm bg-white" placeholder="Tempel Link Google Drive / Dropbox disini">${p.firstmeet_proof ? `<div class="mt-2"><img src="${p.firstmeet_proof}" class="h-32 rounded border shadow-sm object-cover hover:h-auto"><a href="${p.firstmeet_proof}" target="_blank" class="text-xs text-blue-500 underline block mt-1">Lihat Gambar Full</a></div>` : ''}</div></div>`;
+                    body += `
+                        <label class="text-xs font-bold text-slate-500">CATATAN FIRST MEET</label><textarea onchange="UserModule.updateField('${p.id}','firstmeet_notes',this.value)" class="w-full border p-2 rounded mb-4" rows="4">${p.firstmeet_notes||''}</textarea>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-dashed border-slate-300">
+                            <h4 class="font-bold text-slate-700 text-sm mb-2"><i class="fas fa-cloud-upload-alt mr-2"></i>Bukti First Meet (Foto/Absensi)</h4>
+                            <div class="space-y-3">
+                                <input type="file" onchange="UserModule.uploadFile('${p.id}','evidence',this.files[0],'firstmeet_proof')" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                                <div class="relative"><div class="absolute inset-0 flex items-center" aria-hidden="true"><div class="w-full border-t border-gray-200"></div></div><div class="relative flex justify-center"><span class="px-2 bg-slate-50 text-xs text-gray-500">Atau via Link Drive</span></div></div>
+                                <input value="${p.firstmeet_proof||''}" onchange="UserModule.updateField('${p.id}','firstmeet_proof',this.value)" class="w-full border p-2 rounded text-sm bg-white" placeholder="Tempel Link Google Drive / Dropbox disini">
+                                ${p.firstmeet_proof ? `<div class="mt-2"><img src="${p.firstmeet_proof}" class="h-32 rounded border shadow-sm object-cover hover:h-auto"><a href="${p.firstmeet_proof}" target="_blank" class="text-xs text-blue-500 underline block mt-1">Lihat Gambar Full</a></div>` : ''}
+                            </div>
+                        </div>
+                    `;
                 } else if (sid === 5) {
                      body += `<label class="text-xs font-bold text-slate-500">CATATAN EVALUASI EVENT</label><textarea onchange="UserModule.updateField('${p.id}','eventday_notes',this.value)" class="w-full border p-2 rounded" rows="5">${p.eventday_notes||''}</textarea>`;
                 } else if (sid === 6) {
                      body += `<label class="text-xs font-bold text-slate-500">ISI LAPORAN</label><textarea onchange="UserModule.updateField('${p.id}','report_content',this.value)" class="w-full border p-2 rounded mb-4" rows="5">${p.report_content||''}</textarea><div class="bg-slate-50 p-4 rounded-xl border border-dashed border-slate-300 mb-4"><h4 class="font-bold text-slate-700 text-sm mb-2"><i class="fas fa-cloud-upload-alt mr-2"></i>Bukti Laporan Akhir (Foto Kegiatan)</h4><div class="space-y-3"><input type="file" onchange="UserModule.uploadFile('${p.id}','evidence',this.files[0],'report_proof')" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" /><input value="${p.report_proof||''}" onchange="UserModule.updateField('${p.id}','report_proof',this.value)" class="w-full border p-2 rounded text-sm bg-white" placeholder="Tempel Link Google Drive / Dropbox disini">${p.report_proof ? `<div class="mt-2"><img src="${p.report_proof}" class="h-32 rounded border shadow-sm object-cover hover:h-auto"><a href="${p.report_proof}" target="_blank" class="text-xs text-blue-500 underline block mt-1">Lihat Gambar Full</a></div>` : ''}</div></div>${status==='approved' ? `<button onclick="PDFService.generate('${p.id}')" class="w-full bg-red-600 text-white py-3 rounded font-bold hover:bg-red-700 transition"><i class="fas fa-file-pdf mr-2"></i> Export Laporan PDF Lengkap</button>` : ''}`;
                 }
 
-                container.innerHTML = `<div class="fade-in pb-20"><button onclick="App.router('projects')" class="text-sm mb-4"><i class="fas fa-arrow-left"></i> Kembali</button><h1 class="text-2xl font-bold mb-4">${p.title}</h1><div class="flex overflow-x-auto pb-4 mb-4">${stepsHtml}</div><div class="bg-white rounded-2xl p-6 border shadow-sm mb-6">${body}<div class="mt-4 pt-4 border-t">${controls}</div></div></div>`;
-            },
-            
-            // --- NEW: Upload Budget Proof (Invoice) Logic ---
-            uploadBudgetProof: async (pid, budgetId, file) => {
-                if(!file) return;
-                Core.showToast('Mengupload Invoice...');
-                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-                const fileName = `invoices/${pid}/${Date.now()}_${safeName}`;
-                
-                const { error: uploadError } = await Core.supabase.storage.from('evidence').upload(fileName, file);
-                if(uploadError) { Core.showToast('Gagal Upload: ' + uploadError.message); return; }
-                
-                const { data } = Core.supabase.storage.from('evidence').getPublicUrl(fileName);
-                
-                const { error: dbError } = await Core.supabase.from('budgets').update({ invoice_url: data.publicUrl }).eq('id', budgetId);
-                
-                if(dbError) { Core.showToast('Gagal Simpan DB'); } 
-                else { 
-                    Core.showToast('Invoice Berhasil Diupload'); 
-                    UserModule.openProjectDetail(pid, 2); // Refresh UI to show status
-                }
+                container.innerHTML = `
+                    <div class="fade-in pb-20">
+                        <button onclick="App.router('projects')" class="text-sm text-slate-500 mb-4"><i class="fas fa-arrow-left"></i> Kembali</button>
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h1 class="text-2xl font-bold mb-1 flex items-center gap-2">
+                                    ${p.title} 
+                                    <button onclick="UserModule.openEditProjectModal(${pJson})" class="text-slate-400 hover:text-green-600 text-sm transition ml-2" title="Edit Informasi Proyek">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                </h1>
+                                <p class="text-sm text-slate-500">${p.regional} • ${Core.formatDate(p.event_date)} • ${p.location || 'Lokasi belum diatur'} • ${p.leader || 'Leader?'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex overflow-x-auto pb-4 mb-4">${stepsHtml}</div>
+                        <div class="bg-white rounded-2xl p-6 border shadow-sm mb-6">
+                            <div>${body}</div>
+                            <div class="mt-4 pt-4 border-t">${controls}</div>
+                        </div>
+                        <div class="bg-white rounded-2xl border shadow-sm p-6"><h3 class="font-bold text-lg mb-4">Timeline Event (Real Date)</h3><div class="overflow-x-auto">${UserModule.renderGanttChart([p])}</div></div>
+                    </div>`;
             },
 
-            addItemModal: (t, pid) => {
-                let html = t==='budgets' ? `<input name="item_name" placeholder="Item" class="w-full border p-2 mb-2" required><div class="flex gap-2"><input name="quantity" type="number" placeholder="Qty" class="w-full border p-2"><input name="unit_price" type="number" placeholder="Harga" class="w-full border p-2"></div>` : '';
-                Core.openGenericModal('Tambah', `<form onsubmit="event.preventDefault();UserModule.saveItem('${t}','${pid}',this)">${html}<button class="w-full bg-green-600 text-white py-2 mt-4 rounded">Simpan</button></form>`);
+            // UPDATED: Sync to Finance
+            updateField: async (id, col, val) => { 
+                const { error } = await Core.supabase.from('projects').update({[col]: val}).eq('id', id); 
+                if(error) { console.error(error); Core.showToast('Gagal Simpan DB: ' + error.message); return false; }
+                
+                // If updating title or regional, we need to sync to Finance events table too
+                if (col === 'title' || col === 'regional') {
+                    // This is complex because we need the old values to find the record, 
+                    // but for simplicity we rely on the project ID relation if we had it, 
+                    // or simpler: just accept that renaming might create a new entry if not handled perfectly.
+                    // Ideally we'd store finance_event_id in projects. 
+                    // For now, let's just trigger a syncBudgetToFinance for this project ID to be safe
+                    UserModule.syncBudgetToFinance(id);
+                }
+
+                Core.showToast('Tersimpan'); return true;
             },
+            
+            uploadFile: async (pid, bucket, file, dbCol) => {
+                if(!file) return;
+                if (file.size > 500 * 1024) { Core.showToast('File terlalu besar! Maks 500KB.'); return; }
+                Core.showToast('Mengupload file... Mohon tunggu');
+                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                const fileName = `${pid}/${Date.now()}_${safeName}`;
+                const { error } = await Core.supabase.storage.from(bucket).upload(fileName, file);
+                if(!error) {
+                    const { data } = Core.supabase.storage.from(bucket).getPublicUrl(fileName);
+                    const success = await UserModule.updateField(pid, dbCol, data.publicUrl);
+                    if(success) { Core.showToast('Upload Sukses! Merefresh...'); setTimeout(() => UserModule.openProjectDetail(pid, dbCol === 'firstmeet_proof' ? 4 : 6), 1000); }
+                } else { Core.showToast('Gagal Upload: '+error.message); }
+            },
+
+            submitApproval: async (id, step) => { await Core.supabase.from('project_approvals').upsert({project_id: id, step_number: step, status: 'submitted'}); Core.showToast('Diajukan ke Finance'); UserModule.openProjectDetail(id, step); },
+            
+            addItemModal: (table, pid) => {
+                let html = '';
+                if(table === 'budgets') {
+                    html = `
+                        <input name="item_name" placeholder="Item" class="w-full border p-2 rounded mb-2" required>
+                        <div class="flex gap-2 mb-2">
+                            <div class="flex-1">
+                                <label class="text-xs font-bold text-slate-500">QTY</label>
+                                <input name="quantity" type="number" class="w-full border p-2 rounded" placeholder="0" oninput="UserModule.calcTotal(this.form)">
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-xs font-bold text-slate-500">HARGA</label>
+                                <input name="unit_price" type="number" class="w-full border p-2 rounded" placeholder="0" oninput="UserModule.calcTotal(this.form)">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500">TOTAL</label>
+                            <input name="total_price" readonly class="w-full border p-2 rounded bg-slate-100 mb-2">
+                        </div>`;
+                } else if(table === 'volunteers') {
+                    html = `<input name="role_name" placeholder="Divisi" class="w-full border p-2 rounded mb-2" required><input name="count" placeholder="Jml" class="w-full border p-2 rounded">`;
+                } else if(table === 'project_games') {
+                    html = `<input name="title" placeholder="Nama Game" class="w-full border p-2 rounded mb-2" required><input name="link" placeholder="Link Referensi" class="w-full border p-2 rounded">`;
+                }
+                Core.openGenericModal('Tambah Data', `<form onsubmit="event.preventDefault();UserModule.saveItem('${table}','${pid}',this)">${html}<button class="w-full bg-green-600 text-white py-2 rounded mt-4 font-bold hover:bg-green-700 transition">Simpan</button></form>`);
+            },
+
+            editBudget: (pid, item) => {
+                const html = `
+                    <form onsubmit="event.preventDefault(); UserModule.saveItem('budgets', '${pid}', this)">
+                        <input type="hidden" name="id" value="${item.id}">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">NAMA ITEM</label>
+                        <input name="item_name" value="${item.item_name}" class="w-full border p-2 rounded mb-2" required>
+                        <div class="flex gap-2 mb-2">
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-500">QTY</label>
+                                <input name="quantity" type="number" value="${item.quantity}" class="w-full border p-2 rounded" oninput="UserModule.calcTotal(this.form)">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-500">HARGA SATUAN</label>
+                                <input name="unit_price" type="number" value="${item.unit_price}" class="w-full border p-2 rounded" oninput="UserModule.calcTotal(this.form)">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-500">TOTAL HARGA</label>
+                            <input name="total_price" readonly value="${item.total_price}" class="w-full border p-2 rounded bg-slate-100 font-bold text-slate-700">
+                        </div>
+                        <button class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 transition">Update Budget</button>
+                    </form>
+                `;
+                Core.openGenericModal('Edit Budget', html);
+            },
+
+            editGame: (pid, item) => {
+                const html = `
+                    <form onsubmit="event.preventDefault(); UserModule.saveItem('project_games', '${pid}', this)">
+                        <input type="hidden" name="id" value="${item.id}">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">NAMA GAME / AKTIVITAS</label>
+                        <input name="title" value="${item.title}" class="w-full border p-2 rounded mb-3" required>
+                        
+                        <label class="block text-xs font-bold text-slate-500 mb-1">LINK REFERENSI</label>
+                        <input name="link" value="${item.link || ''}" class="w-full border p-2 rounded mb-4" placeholder="https://...">
+                        
+                        <button class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 transition">Update Game</button>
+                    </form>
+                `;
+                Core.openGenericModal('Edit Game', html);
+            },
+
+            editRundown: (pid, item) => {
+                const html = `
+                    <form onsubmit="event.preventDefault(); UserModule.saveItem('rundowns', '${pid}', this)">
+                        <input type="hidden" name="id" value="${item.id}">
+                        <div class="flex gap-2 mb-2">
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">JAM MULAI</label>
+                                <input type="time" name="time_start" value="${item.time_start}" class="w-full border p-2 rounded" required>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">JAM SELESAI</label>
+                                <input type="time" name="time_end" value="${item.time_end}" class="w-full border p-2 rounded" required>
+                            </div>
+                        </div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">KEGIATAN</label>
+                        <input name="activity" value="${item.activity}" class="w-full border p-2 rounded mb-4" required>
+                        <button class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 transition">Update Rundown</button>
+                    </form>`;
+                Core.openGenericModal('Edit Rundown', html);
+            },
+
+            editVolunteer: (pid, item) => {
+                const html = `
+                    <form onsubmit="event.preventDefault(); UserModule.saveItem('volunteers', '${pid}', this)">
+                        <input type="hidden" name="id" value="${item.id}">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">NAMA DIVISI / PERAN</label>
+                        <input name="role_name" value="${item.role_name}" class="w-full border p-2 rounded mb-2" required>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">JUMLAH ORANG</label>
+                        <input name="count" type="number" value="${item.count}" class="w-full border p-2 rounded mb-4">
+                        <button class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 transition">Update Volunteer</button>
+                    </form>`;
+                Core.openGenericModal('Edit Volunteer', html);
+            },
+
+            calcTotal: (form) => {
+                const q = parseFloat(form.quantity.value) || 0;
+                const p = parseFloat(form.unit_price.value) || 0;
+                form.total_price.value = q * p;
+            },
+            
+            openRundownModal: (pid) => {
+                Core.openGenericModal('Tambah Rundown', 
+                `<form onsubmit="event.preventDefault();UserModule.saveItem('rundowns','${pid}',this)">
+                    <div class="flex gap-2 mb-2">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-slate-500 mb-1">JAM MULAI</label>
+                            <input type="time" name="time_start" class="w-full border p-2 rounded" required>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-slate-500 mb-1">JAM SELESAI</label>
+                            <input type="time" name="time_end" class="w-full border p-2 rounded" required>
+                        </div>
+                    </div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">KEGIATAN</label>
+                    <input name="activity" placeholder="Nama Kegiatan" class="w-full border p-2 rounded mb-4" required>
+                    <button class="w-full bg-green-600 text-white py-2 rounded mt-4 font-bold hover:bg-green-700 transition">Simpan</button>
+                </form>`);
+            },
+
+            // UPDATED: Sync to Finance
             saveItem: async (table, pid, form) => {
-                const d = Object.fromEntries(new FormData(form)); d.project_id = pid;
-                if(table==='budgets') d.total_price = (d.quantity||0) * (d.unit_price||0);
-                await Core.supabase.from(table).insert(d);
-                if(table==='budgets') await UserModule.syncBudgetToFinance(pid);
+                const d = Object.fromEntries(new FormData(form)); 
+                d.project_id = pid;
+                
+                // Hapus total_price agar tidak error karena generated column
+                if (table === 'budgets') {
+                    delete d.total_price;
+                }
+                
+                if (d.id) {
+                    await Core.supabase.from(table).update(d).eq('id', d.id);
+                } else {
+                    delete d.id;
+                    await Core.supabase.from(table).insert(d); 
+                }
+                
+                // Sync Logic: If table is budgets, recalculate and update finance events
+                if (table === 'budgets') {
+                    await UserModule.syncBudgetToFinance(pid);
+                }
+
                 Core.toggleModal('modal-generic');
                 let step = table === 'budgets' || table === 'rundowns' ? 2 : (table === 'volunteers' ? 3 : 1);
                 UserModule.openProjectDetail(pid, step);
             },
+
+            // UPDATED: Sync to Finance
             deleteItem: async (table, id, pid) => {
-                if(!await Core.confirm('Hapus?')) return;
+                if(!await Core.confirm('Hapus item ini?')) return;
                 await Core.supabase.from(table).delete().eq('id', id);
-                if(table==='budgets') await UserModule.syncBudgetToFinance(pid);
-                let step = table === 'budgets' || table === 'rundowns' ? 2 : (table === 'volunteers' ? 3 : 1);
+                
+                // Sync Logic
+                if (table === 'budgets') {
+                    await UserModule.syncBudgetToFinance(pid);
+                }
+
+                let step = 1;
+                if (table === 'budgets' || table === 'rundowns') step = 2;
+                if (table === 'volunteers') step = 3;
                 UserModule.openProjectDetail(pid, step);
             },
+
+            // NEW FUNCTION: Sync Logic
             syncBudgetToFinance: async (pid) => {
+                // 1. Get all budgets for this project
                 const { data: budgets } = await Core.supabase.from('budgets').select('total_price').eq('project_id', pid);
                 const total = budgets ? budgets.reduce((sum, item) => sum + (item.total_price || 0), 0) : 0;
-                const { data: p } = await Core.supabase.from('projects').select('title, regional').eq('id', pid).single();
-                if (p) await Core.supabase.from('events').upsert({ region: p.regional, name: p.title, budget_limit: total, status: 'active' }, { onConflict: 'region,name' });
+
+                // 2. Get Project Details
+                const { data: project } = await Core.supabase.from('projects').select('title, regional').eq('id', pid).single();
+                
+                if (project) {
+                    // 3. Update 'events' table in Finance DB
+                    // We assume 'region' + 'name' is unique key in Finance Events
+                    await Core.supabase.from('events').upsert({
+                        region: project.regional,
+                        name: project.title,
+                        budget_limit: total,
+                        status: 'active'
+                    }, { onConflict: 'region,name' });
+                    
+                    console.log(`Synced Budget: ${total} to Finance Event: ${project.title}`);
+                }
             },
-            submitApproval: async (id, step) => { await Core.supabase.from('project_approvals').upsert({project_id: id, step_number: step, status: 'submitted'}); Core.showToast('Diajukan ke Finance'); UserModule.openProjectDetail(id, step); },
+
+            deleteProject: async (id) => {
+                if(!await Core.confirm('Hapus proyek ini secara permanen?')) return;
+                await Core.supabase.from('projects').delete().eq('id', id);
+                UserModule.loadData(); App.router('projects');
+            },
+
             renderGanttChart: (list) => {
                 if(!list.length) return '';
-                const h = Array.from({length:20},(_,i)=>`<div class="w-8 shrink-0 text-center text-xs border-r">${i-10}</div>`).join('');
-                return `<div class="min-w-[600px]"><div class="flex border-b pb-1"><div class="w-40 shrink-0">Project</div><div class="flex">${h}</div></div>${list.map(p=>`<div class="flex border-b py-1 hover:bg-slate-50"><div class="w-40 shrink-0 truncate pr-2 text-sm">${p.title}</div><div class="flex">${Array.from({length:20},(_,i)=>`<div class="w-8 shrink-0 border-r h-4 ${i===10?'bg-green-500':''}"></div>`).join('')}</div></div>`).join('')}</div>`;
+                const today = new Date();
+                const header = Array.from({length:26},(_,i)=>{ const d=i-20; return `<div class="w-8 shrink-0 text-center text-xs ${[-18,-15,-3,0,2].includes(d)?'bg-slate-200 font-bold':''}">${d===0?'H':(d>0?'+'+d:d)}</div>` }).join('');
+                
+                return `<div class="min-w-[800px] relative">
+                    <div class="flex border-b pb-2 mb-2"><div class="w-40 shrink-0">Project</div><div class="flex">${header}</div></div>
+                    ${list.map(p=>{
+                        if(!p.event_date) return '';
+                        const eventDate = new Date(p.event_date);
+                        const diffTime = today - eventDate;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        const cells = Array.from({length:26},(_,i)=>{ const d=i-20; 
+                            let c=''; 
+                            if(d===-18) c='P'; 
+                            else if(d===-15) c='M'; 
+                            else if(d===-3) c='F'; 
+                            else if(d===0) c='E'; 
+                            else if(d===2) c='L';
+                            
+                            const isRecruitment = d >= -15 && d <= -5;
+                            
+                            let color = 'bg-slate-200'; 
+                            if (d < diffDays) color = 'bg-green-500'; 
+                            else if (d === diffDays) color = 'bg-blue-500 animate-pulse'; 
+                            
+                            if (d >= diffDays) {
+                                if(c==='P') color='bg-slate-400';
+                                if(c==='M') color='bg-purple-400';
+                                if(c==='F') color='bg-yellow-400';
+                                if(c==='E') color='bg-blue-500';
+                                if(c==='L') color='bg-green-500';
+                                if(isRecruitment) color = 'bg-orange-200'; 
+                            } else {
+                                if(isRecruitment) color = 'bg-green-200'; 
+                            }
+
+                            const date = new Date(eventDate);
+                            date.setDate(date.getDate() + d);
+                            const dateStr = date.toLocaleDateString('id-ID', {day:'numeric', month:'short'});
+                            
+                            let content = '';
+                            if(c) content = `<div class="w-5 h-5 rounded-full text-[9px] text-white flex items-center justify-center ${color} shadow-sm z-10 relative">${c}</div>`;
+                            else if(isRecruitment) content = `<div class="h-2 w-full ${color} mt-1.5 rounded-full"></div>`;
+                            
+                            const isToday = d === diffDays;
+                            
+                            return `<div class="w-8 shrink-0 border-r h-8 flex flex-col items-center justify-center relative group gantt-cell">
+                                ${isToday ? '<div class="today-line"></div>' : ''}
+                                ${content}
+                                <div class="gantt-tooltip hidden absolute bottom-full mb-1 bg-slate-800 text-white text-[10px] p-1 rounded whitespace-nowrap z-20 shadow-lg">
+                                    ${dateStr} (H${d})
+                                </div>
+                            </div>`;
+                        }).join('');
+                        
+                        let badgeClass = 'bg-slate-500';
+                        if(p.regional === 'Bandung') badgeClass = 'bg-blue-600';
+                        else if(p.regional === 'Banjarmasin') badgeClass = 'bg-cyan-600';
+                        else if(p.regional === 'Bogor') badgeClass = 'bg-emerald-600';
+                        else if(p.regional === 'Jakarta') badgeClass = 'bg-orange-600';
+                        else if(p.regional === 'Jatinangor') badgeClass = 'bg-pink-600';
+                        else if(p.regional === 'Malang') badgeClass = 'bg-red-600';
+                        else if(p.regional === 'Palembang') badgeClass = 'bg-yellow-500';
+                        else if(p.regional === 'Purwokerto') badgeClass = 'bg-indigo-600';
+                        else if(p.regional === 'Semarang') badgeClass = 'bg-teal-600';
+                        else if(p.regional === 'Solo') badgeClass = 'bg-lime-600';
+                        else if(p.regional === 'Surabaya') badgeClass = 'bg-green-600';
+                        else if(p.regional === 'Yogyakarta') badgeClass = 'bg-purple-600';
+
+                        return `<div class="flex items-center mb-2 border-b pb-2 hover:bg-slate-50 transition"><div class="w-40 shrink-0 pr-2"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full ${badgeClass}"></div><div class="truncate text-sm font-bold" title="${p.title}">${p.title}</div></div><div class="text-[10px] text-slate-400 pl-4">${Core.formatDate(p.event_date)}</div></div><div class="flex">${cells}</div></div>`;
+                    }).join('')}
+                    <div class="mt-4 flex gap-4 text-xs text-slate-500 border-t pt-2 flex-wrap">
+                        <div class="flex items-center"><div class="w-3 h-3 bg-red-500 mr-1 rounded-full"></div> Hari Ini</div>
+                        <div class="flex items-center"><div class="w-3 h-3 bg-green-500 mr-1 rounded-full"></div> Selesai</div>
+                        <div class="flex items-center"><div class="w-10 h-2 bg-orange-200 mr-1 rounded-full"></div> Rekrutmen</div>
+                    </div>
+                </div>`;
             },
-            openEditProjectModal: (p) => { Core.openGenericModal('Edit', `<form onsubmit="event.preventDefault();UserModule.updateProjectDetails(this,'${p.id}')"><label>Nama</label><input name="title" value="${p.title}" class="w-full border p-2 mb-2"><label>Tanggal</label><input type="date" name="event_date" value="${p.event_date}" class="w-full border p-2 mb-2"><button class="w-full bg-blue-600 text-white py-2 rounded">Simpan</button></form>`); },
-            updateProjectDetails: async (form, pid) => { const d = Object.fromEntries(new FormData(form)); const { error } = await Core.supabase.from('projects').update(d).eq('id', pid); if (!error) { Core.showToast('Informasi proyek diperbarui'); Core.toggleModal('modal-generic'); await UserModule.syncBudgetToFinance(pid); if (UserModule.activeProjectId) UserModule.openProjectDetail(pid, 1); else App.router('projects'); } else Core.showToast('Gagal update: ' + error.message); },
-            updateField: async (id, col, val) => { const { error } = await Core.supabase.from('projects').update({[col]: val}).eq('id', id); if(error) { Core.showToast('Gagal Simpan DB: ' + error.message); return false; } if (col === 'title' || col === 'regional') UserModule.syncBudgetToFinance(id); Core.showToast('Tersimpan'); return true; },
-            uploadFile: async (pid, bucket, file, dbCol) => { if(!file || file.size > 500 * 1024) return; const fileName = `${pid}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`; const { error } = await Core.supabase.storage.from(bucket).upload(fileName, file); if(!error) { const { data } = Core.supabase.storage.from(bucket).getPublicUrl(fileName); const success = await UserModule.updateField(pid, dbCol, data.publicUrl); if(success) setTimeout(() => UserModule.openProjectDetail(pid, dbCol === 'firstmeet_proof' ? 4 : 6), 1000); } },
-        
-            // PDF Generation logic
+
+            openEditProjectModal: (p) => {
+                const html = `
+                    <form onsubmit="event.preventDefault(); UserModule.updateProjectDetails(this, '${p.id}')">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">NAMA KEGIATAN</label>
+                        <input name="title" value="${p.title}" class="w-full border p-2 rounded mb-3" required>
+                        
+                        <label class="block text-xs font-bold text-slate-500 mb-1">PROJECT LEADER</label>
+                        <input name="leader" value="${p.leader || ''}" class="w-full border p-2 rounded mb-3" placeholder="Nama Leader">
+
+                        <label class="block text-xs font-bold text-slate-500 mb-1">TANGGAL EVENT</label>
+                        <input type="date" name="event_date" value="${p.event_date}" class="w-full border p-2 rounded mb-3" required>
+                        
+                        <label class="block text-xs font-bold text-slate-500 mb-1">LOKASI</label>
+                        <input name="location" value="${p.location || ''}" class="w-full border p-2 rounded mb-4">
+                        
+                        <button class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 transition">Update Info</button>
+                    </form>
+                `;
+                Core.openGenericModal('Edit Informasi Proyek', html);
+            },
+
+            updateProjectDetails: async (form, pid) => {
+                const d = Object.fromEntries(new FormData(form));
+                const { error } = await Core.supabase.from('projects').update(d).eq('id', pid);
+                if (!error) {
+                    Core.showToast('Informasi proyek diperbarui');
+                    Core.toggleModal('modal-generic');
+                    // Trigger sync if title changed
+                    await UserModule.syncBudgetToFinance(pid);
+                    
+                    if (UserModule.activeProjectId) {
+                         UserModule.openProjectDetail(pid, 1); 
+                    } else {
+                         App.router('projects');
+                    }
+                } else {
+                    Core.showToast('Gagal update: ' + error.message);
+                }
+            },
+
+            getStepContent: (sid, p, r) => {
+                return ''; 
+            }
         };
 
-        // Simplified PDFService
+        // --- MODULE 5: PDF ENGINE ---
         const PDFService = {
-             generate: async (pid) => {
-                 try {
-                     Core.showToast('Menyiapkan PDF...');
-                     const { data: p } = await Core.supabase.from('projects').select('*').eq('id', pid).single();
-                     const { data: b } = await Core.supabase.from('budgets').select('*').eq('project_id', pid);
-                     const doc = new window.jspdf.jsPDF();
-                     doc.text(`Laporan: ${p.title}`, 10, 10);
-                     doc.autoTable({ head: [['Item', 'Qty', 'Harga', 'Total']], body: b.map(x => [x.item_name, x.quantity, x.unit_price, x.total_price]) });
-                     doc.save(`Laporan_${p.title}.pdf`);
-                 } catch(e) { console.error(e); }
-             }
+            generate: async (pid) => {
+                try {
+                    Core.showToast('Menyiapkan PDF...');
+                    const { data: p, error: errP } = await Core.supabase.from('projects').select('*').eq('id', pid).single();
+                    if(errP) throw errP;
+
+                    const { data: r } = await Core.supabase.from('rundowns').select('*').eq('project_id', pid);
+                    const { data: b } = await Core.supabase.from('budgets').select('*').eq('project_id', pid);
+                    const { data: g } = await Core.supabase.from('project_games').select('*').eq('project_id', pid);
+
+                    const doc = new window.jspdf.jsPDF();
+                    let y = 20; const line = (txt, sz=10, type='normal') => { doc.setFontSize(sz); doc.setFont(undefined, type); doc.text(txt, 15, y); y+=sz/2+2; };
+
+                    // Header
+                    doc.setTextColor(22, 163, 74); doc.setFontSize(18); doc.text("Laporan Proyek Regional Sankara", 105, y, null, null, 'center'); y+=10;
+                    doc.setTextColor(0); doc.setFontSize(10);
+                    line(`Nama Kegiatan: ${p.title}`); line(`Tanggal: ${Core.formatDate(p.event_date)} | Lokasi: ${p.location}`); 
+                    line(`Regional: ${p.regional} | Leader: ${p.leader}`); 
+                    line(`Target Audience: ${p.target_audience || '-'}`);
+                    y+=5;
+                    doc.setDrawColor(200); doc.line(15,y,195,y); y+=8;
+
+                    // Konsep & Games
+                    line("Konsep Acara:", 12, 'bold');
+                    const splitKonsep = doc.splitTextToSize(p.concept_note||'-', 180); doc.text(splitKonsep, 15, y); y+=splitKonsep.length*5+5;
+                    
+                    if(g && g.length){
+                        line("Daftar Games & Edukasi:", 12, 'bold');
+                        g.forEach(gm => line(`- ${gm.title} (${gm.link||'-'})`)); y+=5;
+                    }
+
+                    // Tables
+                    doc.autoTable({ startY: y, head: [['Item','Qty','Harga','Total']], body: [...b.map(x=>[x.item_name, x.quantity, Core.formatCurrency(x.unit_price), Core.formatCurrency(x.total_price)]), ['TOTAL','','', Core.formatCurrency(b.reduce((s,i)=>s+(i.total_price||0),0))]], theme: 'grid', headStyles: {fillColor:[22,163,74]} });
+                    y = doc.lastAutoTable.finalY + 10;
+                    
+                    doc.autoTable({ startY: y, head: [['Waktu','Kegiatan']], body: r.map(x=>[`${x.time_start}-${x.time_end}`, x.activity]), theme: 'grid', headStyles: {fillColor:[22,163,74]} });
+                    y = doc.lastAutoTable.finalY + 10;
+
+                    // Helper function to convert Image URL to JPEG Base64 via Canvas
+                    const addImg = async (url, title) => {
+                        if(!url) return;
+                        if(y > 200) { doc.addPage(); y=20; }
+                        line(title, 12, 'bold');
+                        try {
+                            const safeUrl = url.startsWith('http') ? url : `${Core.SUPABASE_URL}/storage/v1/object/public/evidence/${url}`;
+                            // Cache buster to fix CORS
+                            const corsUrl = safeUrl + (safeUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
+                            
+                            const blob = await fetch(corsUrl).then(res => {
+                                if (!res.ok) throw new Error('Network response was not ok');
+                                return res.blob();
+                            });
+                            
+                            // Create an image element
+                            const img = new Image();
+                            img.crossOrigin = 'Anonymous'; // FIX: Enable CORS for canvas
+                            const imgLoadPromise = new Promise((resolve, reject) => {
+                                img.onload = resolve;
+                                img.onerror = reject;
+                                img.src = URL.createObjectURL(blob);
+                            });
+                            
+                            await imgLoadPromise;
+
+                            // Draw on canvas with white background
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.fillStyle = '#FFFFFF'; // White bg to fix transparency issues
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0);
+                            
+                            // Convert to JPEG Base64
+                            const jpegBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                            
+                            doc.addImage(jpegBase64, 'JPEG', 15, y, 80, 60); 
+                            y+=65;
+                        } catch(e) { 
+                            console.error(e);
+                            line("(Gambar tidak dapat dimuat)", 10, 'italic'); 
+                        }
+                    };
+
+                    await addImg(p.firstmeet_proof, "Bukti First Meet:");
+                    await addImg(p.report_proof, "Foto Laporan Akhir:");
+
+                    doc.save(`Laporan_${p.title}.pdf`);
+                    Core.showToast('Download Selesai');
+                } catch (e) {
+                    console.error("PDF Error:", e);
+                    Core.showToast('Gagal membuat PDF: ' + e.message);
+                }
+            }
         };
 
+        // --- ROUTER ---
         const App = {
-            init: () => { Core.initSupabase(); Core.checkDB(); App.router('projects'); },
+            init: () => { 
+                Core.initSupabase(); 
+                Core.checkDB(); // Auto-check if tables exist
+                App.router('projects'); 
+            },
             router: (r) => {
                 const c = document.getElementById('content-area');
+                // Remove active classes
                 document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('bg-green-50', 'text-green-700', 'bg-orange-50', 'bg-blue-50'));
+                
+                // Add active state to nav
+                if(r === 'dashboard') document.getElementById('nav-dashboard').classList.add('bg-green-50', 'text-green-700');
+                if(r === 'projects') document.getElementById('nav-projects').classList.add('bg-green-50', 'text-green-700');
+                if(r === 'references') document.getElementById('nav-references').classList.add('bg-orange-50', 'text-orange-700');
+
                 if(r==='dashboard'){ UserModule.loadData().then(()=>UserModule.renderDashboard(c)); }
                 if(r==='projects'){ UserModule.loadData().then(()=>UserModule.renderProjectList(c)); }
                 if(r==='references'){ UserModule.renderReferences(c); }
